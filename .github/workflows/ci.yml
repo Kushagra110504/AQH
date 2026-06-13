@@ -1,0 +1,42 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Generate Prisma Client
+      run: npx prisma generate --schema=packages/db/prisma/schema.prisma
+
+    - name: Build packages
+      run: |
+        npm run build -w @vsp/shared
+        npm run build -w @vsp/db
+
+    - name: Build applications
+      run: |
+        npm run build -w @vsp/api
+        npm run build -w @vsp/web
+
+    - name: Run test suite
+      run: |
+        npm run test -w @vsp/api --if-present
+        npm run test -w @vsp/web --if-present

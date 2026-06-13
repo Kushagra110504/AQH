@@ -1,0 +1,119 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-brand-purple: #8b5cf6;
+  --color-brand-cyan: #06b6d4;
+  --color-bg-dark: #070913;
+  --color-card-dark: #0f132a;
+}
+
+:root {
+  --background: #070913;
+  --foreground: #e2e8f0;
+  --card: rgba(15, 19, 42, 0.65);
+  --card-border: rgba(139, 92, 246, 0.15);
+  --glow-purple: rgba(139, 92, 246, 0.4);
+  --glow-cyan: rgba(6, 182, 212, 0.4);
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Glassmorphism Classes */
+.glass-panel {
+  background: var(--card);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--card-border);
+  border-radius: 1rem;
+}
+
+.glass-panel-glow {
+  background: var(--card);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.1);
+  border-radius: 1rem;
+}
+
+/* Glowing Neon Elements */
+.glow-text-purple {
+  text-shadow: 0 0 10px var(--glow-purple);
+}
+
+.glow-text-cyan {
+  text-shadow: 0 0 10px var(--glow-cyan);
+}
+
+.glow-btn-purple {
+  box-shadow: 0 0 15px rgba(139, 92, 246, 0.2);
+  transition: all 0.3s ease;
+}
+
+.glow-btn-purple:hover {
+  box-shadow: 0 0 25px rgba(139, 92, 246, 0.4);
+  transform: translateY(-1px);
+}
+
+.glow-btn-cyan {
+  box-shadow: 0 0 15px rgba(6, 182, 212, 0.2);
+  transition: all 0.3s ease;
+}
+
+.glow-btn-cyan:hover {
+  box-shadow: 0 0 25px rgba(6, 182, 212, 0.4);
+  transform: translateY(-1px);
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(7, 9, 19, 0.5);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.3);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 92, 246, 0.6);
+}
+
+/* Micro Animations */
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 0.6;
+    box-shadow: 0 0 15px rgba(139, 92, 246, 0.2);
+  }
+  50% {
+    opacity: 1;
+    box-shadow: 0 0 25px rgba(139, 92, 246, 0.5);
+  }
+}
+
+.recording-pulse {
+  animation: pulse-glow 2s infinite ease-in-out;
+}
+
+/* Background mesh glow */
+.bg-mesh {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    radial-gradient(at 10% 20%, rgba(139, 92, 246, 0.08) 0px, transparent 50%),
+    radial-gradient(at 90% 80%, rgba(6, 182, 212, 0.08) 0px, transparent 50%);
+  z-index: -1;
+  pointer-events: none;
+}

@@ -1,0 +1,311 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: vsp-platform
+---
+# PostgreSQL Database Deployment
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+  namespace: vsp-platform
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: vsp-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15-alpine
+          env:
+            - name: POSTGRES_DB
+              value: vsp
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_PASSWORD
+              value: password
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: postgres-storage
+          persistentVolumeClaim:
+            claimName: postgres-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: vsp-platform
+spec:
+  ports:
+    - port: 5432
+  selector:
+    app: postgres
+---
+# Redis Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: vsp-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          ports:
+            - containerPort: 6379
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: vsp-platform
+spec:
+  ports:
+    - port: 6379
+  selector:
+    app: redis
+---
+# MinIO Object Storage Deployment
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: minio-pvc
+  namespace: vsp-platform
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minio
+  namespace: vsp-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: minio
+  template:
+    metadata:
+      labels:
+        app: minio
+    spec:
+      containers:
+        - name: minio
+          image: minio/minio:RELEASE.2024-02-09T06-00-14Z
+          command: ["server", "/data", "--console-address", ":9001"]
+          env:
+            - name: MINIO_ROOT_USER
+              value: minioadmin
+            - name: MINIO_ROOT_PASSWORD
+              value: minioadminpassword
+          ports:
+            - containerPort: 9000
+            - containerPort: 9001
+          volumeMounts:
+            - name: minio-storage
+              mountPath: /data
+      volumes:
+        - name: minio-storage
+          persistentVolumeClaim:
+            claimName: minio-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio
+  namespace: vsp-platform
+spec:
+  ports:
+    - name: api
+      port: 9000
+      targetPort: 9000
+    - name: console
+      port: 9001
+      targetPort: 9001
+  selector:
+    app: minio
+---
+# LiveKit SFU Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: livekit
+  namespace: vsp-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: livekit
+  template:
+    metadata:
+      labels:
+        app: livekit
+    spec:
+      containers:
+        - name: livekit
+          image: livekit/livekit-server:v1.5.0
+          args: ["--config", "/etc/livekit/livekit.yaml"]
+          ports:
+            - containerPort: 7880
+            - containerPort: 7881
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/livekit
+      volumes:
+        - name: config-volume
+          configMap:
+            name: livekit-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: livekit
+  namespace: vsp-platform
+spec:
+  ports:
+    - name: http
+      port: 7880
+      targetPort: 7880
+    - name: webrtc
+      port: 7881
+      targetPort: 7881
+  selector:
+    app: livekit
+---
+# API Server Deployment (NestJS)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  namespace: vsp-platform
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: api
+  template:
+    metadata:
+      labels:
+        app: api
+    spec:
+      containers:
+        - name: api
+          image: yourregistry/vsp-api:latest
+          env:
+            - name: PORT
+              value: "4000"
+            - name: DATABASE_URL
+              value: "postgresql://postgres:password@postgres:5432/vsp?schema=public"
+            - name: REDIS_URL
+              value: "redis://redis:6379"
+            - name: JWT_ACCESS_SECRET
+              value: "access-secret-key-12345"
+            - name: JWT_REFRESH_SECRET
+              value: "refresh-secret-key-12345"
+            - name: LIVEKIT_API_URL
+              value: "http://livekit:7880"
+            - name: LIVEKIT_API_KEY
+              value: "devkey"
+            - name: LIVEKIT_API_SECRET
+              value: "secret"
+            - name: MINIO_ENDPOINT
+              value: "minio"
+            - name: MINIO_PORT
+              value: "9000"
+            - name: MINIO_ACCESS_KEY
+              value: "minioadmin"
+            - name: MINIO_SECRET_KEY
+              value: "minioadminpassword"
+            - name: MINIO_USE_SSL
+              value: "false"
+            - name: MINIO_BUCKET
+              value: "support-assets"
+          ports:
+            - containerPort: 4000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+  namespace: vsp-platform
+spec:
+  ports:
+    - port: 4000
+      targetPort: 4000
+  selector:
+    app: api
+---
+# Web Client Deployment (Next.js)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  namespace: vsp-platform
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+        - name: web
+          image: yourregistry/vsp-web:latest
+          env:
+            - name: PORT
+              value: "3000"
+            - name: NEXT_PUBLIC_API_URL
+              value: "http://api:4000"
+            - name: NEXT_PUBLIC_LIVEKIT_URL
+              value: "ws://livekit:7880"
+          ports:
+            - containerPort: 3000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+  namespace: vsp-platform
+spec:
+  ports:
+    - port: 3000
+      targetPort: 3000
+  selector:
+    app: web

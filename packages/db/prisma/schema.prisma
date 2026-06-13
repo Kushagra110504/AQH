@@ -1,0 +1,109 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String        @id @default(uuid())
+  email        String        @unique
+  passwordHash String
+  role         String        // 'ADMIN', 'AGENT', 'CUSTOMER'
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  sessions     Session[]     @relation("CreatedSessions")
+  participants Participant[]
+  files        File[]
+  auditLogs    AuditLog[]
+
+  @@index([email])
+}
+
+model Session {
+  id           String        @id @default(uuid())
+  status       String        @default("CREATED") // 'CREATED', 'ACTIVE', 'ENDED'
+  inviteToken  String        @unique @default(uuid())
+  createdById  String
+  createdBy    User          @relation("CreatedSessions", fields: [createdById], references: [id])
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  participants Participant[]
+  messages     Message[]
+  recordings   Recording[]
+  files        File[]
+
+  @@index([status])
+  @@index([inviteToken])
+}
+
+model Participant {
+  id          String    @id @default(uuid())
+  sessionId   String
+  session     Session   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  userId      String?
+  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  role        String    // 'ADMIN', 'AGENT', 'CUSTOMER'
+  joinedAt    DateTime  @default(now())
+  leftAt      DateTime?
+  durationSec Int?
+  socketId    String?
+
+  @@index([sessionId])
+  @@index([userId])
+}
+
+model Message {
+  id         String    @id @default(uuid())
+  sessionId  String
+  session    Session   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  senderId   String?
+  senderName String
+  content    String
+  createdAt  DateTime  @default(now())
+  readAt     DateTime?
+
+  @@index([sessionId])
+}
+
+model Recording {
+  id          String          @id @default(uuid())
+  sessionId   String
+  session     Session         @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  status      String          @default("RECORDING") // 'RECORDING', 'PROCESSING', 'READY', 'FAILED'
+  storagePath String?
+  durationSec Int?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([sessionId])
+}
+
+model File {
+  id        String   @id @default(uuid())
+  sessionId String
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  name      String
+  path      String
+  type      String
+  size      Int
+  createdAt DateTime @default(now())
+
+  @@index([sessionId])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  actorId   String?
+  actor     User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  action    String
+  metadata  String?  // JSON stringified metadata for audit logs
+  createdAt DateTime @default(now())
+
+  @@index([action])
+  @@index([createdAt])
+}
